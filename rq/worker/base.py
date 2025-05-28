@@ -429,11 +429,21 @@ class BaseWorker:
         Args:
             connection (Optional[Redis]): The Redis Connection.
         """
-        current_socket_timeout = connection.connection_pool.connection_kwargs.get('socket_timeout')
-        if current_socket_timeout is None or current_socket_timeout < self.connection_timeout:
-            timeout_config = {'socket_timeout': self.connection_timeout}
-            connection.connection_pool.connection_kwargs.update(timeout_config)
-        return connection
+        try:
+            current_socket_timeout = connection.connection_pool.connection_kwargs.get("socket_timeout")
+            if current_socket_timeout is None:
+                timeout_config = {"socket_timeout": self.connection_timeout}
+                connection.connection_pool.connection_kwargs.update(timeout_config)
+            return connection
+        # If you are using RedisCluster you needs to pars all cluster nodes.
+        except AttributeError:
+            nodes = connection.get_nodes()
+            for node in nodes:
+                current_socket_timeout = node.redis_connection.connection_pool.connection_kwargs.get("socket_timeout")
+                if current_socket_timeout is None:
+                    timeout_config = {"socket_timeout": self.connection_timeout}
+                    node.redis_connection.connection_pool.connection_kwargs.update(timeout_config)
+            return connection
 
     @property
     def execution(self) -> Execution | None:
@@ -1508,7 +1518,8 @@ class BaseWorker:
                 try:
                     # if dependencies are inserted after move_dependents_to_ready
                     # a WatchError is thrown by execute()
-                    pipeline.watch(job.dependents_key)
+                    if not(pipeline is redis.cluster.ClusterPipeline):
+                        pipeline.watch(job.dependents_key)
                     # move_dependents_to_ready might call multi() on the pipeline
                     self.log.debug('Worker %s: moving dependents of job %s to ready', self.name, job.id)
                     dependent_job_ids_by_queue = queue.move_dependents_to_ready(job, pipeline=pipeline)

@@ -16,6 +16,7 @@ from typing import (
 )
 
 from redis import WatchError
+from redis.exceptions import RedisClusterException
 
 from .timeouts import BaseDeathPenalty, UnixSignalDeathPenalty
 
@@ -1726,7 +1727,11 @@ class Queue:
         queue_keys = [queue.key for queue in queues]
         while True:
             if len(queue_keys) == 1 and get_version(connection) >= (6, 2, 0):
-                result = cls.lmove(connection, queue_keys[0], timeout)
+                try:
+                    result = cls.lmove(connection, queue_keys[0], timeout)
+                    # If you using redis Cluster you can only use lpop
+                except RedisClusterException:
+                    result = cls.lpop(queue_keys, timeout, connection=connection)
             else:
                 result = cls.lpop(queue_keys, timeout, connection=connection)
             if result is None:
