@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 from contextlib import suppress
 
 import redis.exceptions
+from redis.cluster import ClusterPipeline
 
 from .. import worker_registration
 from ..callbacks import execute_failure_callback, execute_success_callback
@@ -1518,7 +1519,7 @@ class BaseWorker:
                 try:
                     # if dependencies are inserted after move_dependents_to_ready
                     # a WatchError is thrown by execute()
-                    if not(pipeline is redis.cluster.ClusterPipeline):
+                    if not(pipeline is ClusterPipeline):
                         pipeline.watch(job.dependents_key)
                     # move_dependents_to_ready might call multi() on the pipeline
                     self.log.debug('Worker %s: moving dependents of job %s to ready', self.name, job.id)
