@@ -1519,13 +1519,13 @@ class BaseWorker:
                 try:
                     # if dependencies are inserted after move_dependents_to_ready
                     # a WatchError is thrown by execute()
-                    if not(pipeline is ClusterPipeline):
+                    if not(isinstance(pipeline, ClusterPipeline)):
                         pipeline.watch(job.dependents_key)
                     # move_dependents_to_ready might call multi() on the pipeline
                     self.log.debug('Worker %s: moving dependents of job %s to ready', self.name, job.id)
                     dependent_job_ids_by_queue = queue.move_dependents_to_ready(job, pipeline=pipeline)
 
-                    if not pipeline.explicit_transaction:
+                    if not(isinstance(pipeline, ClusterPipeline)) and not pipeline.explicit_transaction:
                         # move_dependents_to_ready didn't call multi after all!
                         # We have to do it ourselves to make sure everything runs in a transaction
                         self.log.debug('Worker %s: calling multi() on pipeline for job %s', self.name, job.id)
