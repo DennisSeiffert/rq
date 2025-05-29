@@ -1523,7 +1523,8 @@ class BaseWorker:
                         pipeline.watch(job.dependents_key)
                     # move_dependents_to_ready might call multi() on the pipeline
                     self.log.debug('Worker %s: moving dependents of job %s to ready', self.name, job.id)
-                    dependent_job_ids_by_queue = queue.move_dependents_to_ready(job, pipeline=pipeline)
+                    if not(isinstance(pipeline, ClusterPipeline)):
+                        dependent_job_ids_by_queue = queue.move_dependents_to_ready(job, pipeline=pipeline)
 
                     if not(isinstance(pipeline, ClusterPipeline)) and not pipeline.explicit_transaction:
                         # move_dependents_to_ready didn't call multi after all!
